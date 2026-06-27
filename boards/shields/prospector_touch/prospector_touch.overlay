@@ -18,7 +18,12 @@
     pwmleds {
         compatible = "pwm-leds";
         disp_bl: disp_bl {
-            pwms = <&pwm1 0 PWM_MSEC(1) PWM_POLARITY_INVERTED>;
+            /* Net-NORMAL backlight polarity (no PWM-cell inversion, and no
+             * nordic,invert in pwm1_default below). This matches the working
+             * Prospector Scanner, which drives the SAME touch display module
+             * (ST7789V + CST816S). A net inversion drives this panel's
+             * active-high backlight off and yields a black screen. */
+            pwms = <&pwm1 0 PWM_MSEC(1) PWM_POLARITY_NORMAL>;
         };
     };
 };
@@ -41,10 +46,8 @@
     };
     pwm1_default: pwm1_default {
         group1 {
-            /* Backlight polarity is expressed once, in the pwm-leds cell
-             * (PWM_POLARITY_INVERTED). Do NOT also invert here: a second
-             * inversion (nordic,invert) cancels it, giving a non-inverted
-             * net signal and wrong duty mapping. */
+            /* No nordic,invert: the backlight is net-NORMAL (see disp_bl).
+             * Adding an inversion here would black out the panel. */
             psels = <NRF_PSEL(PWM_OUT0, 1, 11)>;
         };
     };

@@ -98,7 +98,9 @@ static const struct device *const als = DEVICE_DT_GET_ONE(avago_apds9960);
 
 static uint8_t map_light(int32_t v) {
     v = CLAMP(v, 0, 100);
-    return (uint8_t)(1 + (v * 99) / 100);
+    /* Floor at 15%: auto-brightness must never dim the panel to a black
+     * screen in a dark room or on a quirky ALS reading. Range 15..100. */
+    return (uint8_t)(15 + (v * 85) / 100);
 }
 
 static void als_work(struct k_work *w);
