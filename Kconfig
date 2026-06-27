@@ -1,4 +1,4 @@
-# Prospector Touch — hybrid touch-enabled dongle/scanner module
+# Prospector Touch — touch-enabled USB dongle module
 
 config PROSPECTOR_TOUCH
     bool "Prospector Touch hybrid module"
@@ -31,37 +31,6 @@ config PROSPECTOR_FIXED_BRIGHTNESS
     default 60
     depends on !PROSPECTOR_USE_AMBIENT_LIGHT_SENSOR
 
-config PROSPECTOR_MODE_SCANNER
-    bool "Battery mode: passive BLE observer (status-advertisement scanner)"
-    default y
-    depends on BT_OBSERVER
-    help
-      On battery power (no USB) the device disables the split central / USB HID
-      path and parses ZMK status advertisements as a passive observer. No
-      pairing, no connection slot consumed. USB power switches back to dongle
-      mode (via cold reboot for a clean BLE stack).
-
-config PROSPECTOR_MAX_KEYBOARDS
-    int "Maximum keyboards tracked in scanner mode"
-    range 1 5
-    default 3
-    depends on PROSPECTOR_MODE_SCANNER
-
-config PROSPECTOR_SCANNER_TIMEOUT_MS
-    int "Drop a tracked keyboard after this many ms without an advert (0=never)"
-    range 0 600000
-    default 480000
-    depends on PROSPECTOR_MODE_SCANNER
-
-config PROSPECTOR_HYBRID_BATTERY_DIM
-    int "Backlight brightness (%) in scanner / battery mode"
-    range 1 100
-    default 25
-
-config PROSPECTOR_HYBRID_SOFT_OFF_IDLE_S
-    int "Idle seconds on battery before soft-off (0 = never)"
-    default 1800
-
 config PROSPECTOR_DISPLAY_IDLE_S
     int "Seconds of inactivity before the backlight turns off (0 = never)"
     default 60
@@ -70,10 +39,5 @@ config PROSPECTOR_DEFAULT_LAYOUT
     int "Default main-screen layout style (0=Dashboard, 1=Focus, 2=Minimal)"
     range 0 2
     default 0
-
-config ZMK_STATUS_ADV_ACTIVITY_BASED
-    bool "Throttle BLE status advertising when idle (battery save)"
-    default y
-    depends on ZMK_BLE
 
 endif # PROSPECTOR_TOUCH

@@ -32,9 +32,6 @@
 #endif
 #include <zmk/battery.h>
 #include <zmk/endpoints.h>
-#include <zmk/prospector_state.h>
-#include <zmk/status_scanner.h>
-#include <zmk/status_advertisement.h>
 #if IS_ENABLED(CONFIG_ZMK_BLE)
 #include <zmk/ble.h>
 #endif
@@ -68,10 +65,9 @@ __weak void prospector_brightness_step(int delta) { ARG_UNUSED(delta); }
 
 enum gesture { GEST_UP = 0, GEST_DOWN, GEST_LEFT, GEST_RIGHT, GEST_TAP };
 
-#define UI_PAGE_COUNT 5
+#define UI_PAGE_COUNT 4
 enum ui_page {
     UI_PAGE_MAIN = 0,
-    UI_PAGE_KEYBOARDS,
     UI_PAGE_ACTIONS,
     UI_PAGE_SETTINGS,
     UI_PAGE_INFO,
@@ -113,9 +109,6 @@ static lv_obj_t *lbl_layer, *lbl_mods, *lbl_profile, *lbl_endpoint, *lbl_rssi, *
 static lv_obj_t *lbl_wpm, *lbl_batt, *bar_batt, *bar_pl, *bar_pr;
 /* settings page widgets */
 static lv_obj_t *bar_bright, *lbl_bright, *lbl_auto;
-/* keyboards page widgets */
-static lv_obj_t *lbl_kb[ZMK_STATUS_SCANNER_MAX_KEYBOARDS];
-static lv_obj_t *lbl_channel;
 /* actions page widgets */
 static lv_obj_t *lbl_action[ACTION_COUNT];
 static lv_obj_t *lbl_version;
@@ -160,45 +153,6 @@ static void publish_from_zmk(void) {
     atomic_set(&model_dirty, 1);
 }
 
-/* Scanner-mode data path: called by the BLE observer for the primary keyboard. */
-void prospector_ui_on_scanner_update(const struct zmk_keyboard_status *ks) {
-    if (!ks) {
-        return;
-    }
-    const struct zmk_status_adv_data *d = &ks->data;
-    struct ui_model m = {0};
-    m.scanner = true;
-    m.layer = d->active_layer;
-    size_t len = 0;
-    while (len < sizeof(d->layer_name) && d->layer_name[len]) {
-        len++;
-    }
-    size_t cn = MIN(len, sizeof(m.layer_name) - 1);
-    memcpy(m.layer_name, d->layer_name, cn);
-    m.layer_name[cn] = '\0';
-    if (cn == 0) {
-        snprintf(m.layer_name, sizeof(m.layer_name), "%u", m.layer);
-    }
-    m.wpm = d->wpm_value;
-    m.battery = d->battery_level;
-    m.periph[0] = d->peripheral_battery[0];
-    m.periph[1] = d->peripheral_battery[1];
-    m.periph[2] = d->peripheral_battery[2];
-    m.mods = d->modifier_flags;
-    m.profile = PROSPECTOR_DECODE_PROFILE(d->profile_slot);
-    m.usb = d->status_flags & ZMK_STATUS_FLAG_USB_CONNECTED;
-    m.ble_conn = d->status_flags & ZMK_STATUS_FLAG_BLE_CONNECTED;
-    m.charging = d->status_flags & ZMK_STATUS_FLAG_CHARGING;
-    m.caps_word = d->status_flags & ZMK_STATUS_FLAG_CAPS_WORD;
-    m.rssi = ks->rssi;
-
-    k_mutex_lock(&model_lock, K_FOREVER);
-    model = m;
-    k_mutex_unlock(&model_lock);
-    atomic_set(&model_dirty, 1);
-    prospector_activity_ping();
-}
-
 static int ui_event_listener(const zmk_event_t *eh) {
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
     const struct zmk_peripheral_battery_state_changed *pb =
@@ -223,11 +177,7 @@ static int ui_event_listener(const zmk_event_t *eh) {
     ARG_UNUSED(eh);
 #endif
     prospector_activity_ping();
-    /* Local ZMK state is authoritative only in dongle mode; scanner mode is
-     * driven by prospector_ui_on_scanner_update() from received adverts. */
-    if (prospector_mode_get() == PROSPECTOR_MODE_DONGLE) {
-        publish_from_zmk();
-    }
+    publish_from_zmk();
     return ZMK_EV_EVENT_BUBBLE;
 }
 
@@ -334,43 +284,6 @@ static void do_reset_settings(void) {
     do_reset();
 }
 
-static void select_kb(int dir) {
-#if IS_ENABLED(CONFIG_PROSPECTOR_MODE_SCANNER)
-    int actives[ZMK_STATUS_SCANNER_MAX_KEYBOARDS];
-    int cnt = 0;
-    for (int i = 0; i < ZMK_STATUS_SCANNER_MAX_KEYBOARDS; i++) {
-        struct zmk_keyboard_status *k = zmk_status_scanner_get_keyboard(i);
-        if (k && k->active) {
-            actives[cnt++] = i;
-        }
-    }
-    if (cnt == 0) {
-        return;
-    }
-    int cur = zmk_status_scanner_get_selected();
-    int pos = 0;
-    for (int i = 0; i < cnt; i++) {
-        if (actives[i] == cur) {
-            pos = i;
-            break;
-        }
-    }
-    pos = (cur < 0) ? 0 : (pos + (dir > 0 ? 1 : cnt - 1)) % cnt;
-    zmk_status_scanner_set_selected(actives[pos]);
-#else
-    ARG_UNUSED(dir);
-#endif
-}
-
-static void cycle_channel(void) {
-#if IS_ENABLED(CONFIG_PROSPECTOR_MODE_SCANNER)
-    uint8_t ch = (zmk_status_scanner_get_channel() + 1) % 10; /* 0..9 */
-    zmk_status_scanner_set_channel(ch);
-    display_settings_set_channel(ch);
-    zmk_status_scanner_refresh_display();
-#endif
-}
-
 static void exec_action(void) {
     switch (action_cursor) {
     case 0:
@@ -394,18 +307,14 @@ static void apply_gesture(enum gesture g) {
         show_page((active_page + UI_PAGE_COUNT - 1) % UI_PAGE_COUNT);
         break;
     case GEST_UP:
-        if (active_page == UI_PAGE_KEYBOARDS) {
-            select_kb(-1);
-        } else if (active_page == UI_PAGE_ACTIONS) {
+        if (active_page == UI_PAGE_ACTIONS) {
             action_cursor = (action_cursor + ACTION_COUNT - 1) % ACTION_COUNT;
         } else {
             prospector_brightness_step(+10);
         }
         break;
     case GEST_DOWN:
-        if (active_page == UI_PAGE_KEYBOARDS) {
-            select_kb(+1);
-        } else if (active_page == UI_PAGE_ACTIONS) {
+        if (active_page == UI_PAGE_ACTIONS) {
             action_cursor = (action_cursor + 1) % ACTION_COUNT;
         } else {
             prospector_brightness_step(-10);
@@ -414,8 +323,6 @@ static void apply_gesture(enum gesture g) {
     case GEST_TAP:
         if (active_page == UI_PAGE_SETTINGS) {
             prospector_brightness_set_auto(!prospector_brightness_is_auto());
-        } else if (active_page == UI_PAGE_KEYBOARDS) {
-            cycle_channel();
         } else if (active_page == UI_PAGE_ACTIONS) {
             exec_action();
         } else if (active_page == UI_PAGE_MAIN) {
@@ -554,37 +461,6 @@ static void render_model(void) {
                               m.wpm, m.battery, m.rssi);
     }
 
-    /* ---- keyboards (scanner-only data source) ---- */
-#if IS_ENABLED(CONFIG_PROSPECTOR_MODE_SCANNER)
-    if (lbl_channel) {
-        uint8_t ch = zmk_status_scanner_get_channel();
-        if (ch == 0) {
-            lv_label_set_text(lbl_channel, "Ch: ALL   (tap)");
-        } else {
-            lv_label_set_text_fmt(lbl_channel, "Ch: %u   (tap)", ch);
-        }
-    }
-    int disp = zmk_status_scanner_get_selected();
-    if (disp < 0) {
-        disp = zmk_status_scanner_get_primary_keyboard();
-    }
-    for (int i = 0; i < ZMK_STATUS_SCANNER_MAX_KEYBOARDS; i++) {
-        if (!lbl_kb[i]) {
-            continue;
-        }
-        struct zmk_keyboard_status *k = zmk_status_scanner_get_keyboard(i);
-        if (k && k->active) {
-            const char *nm = (k->ble_name[0]) ? k->ble_name : "keyboard";
-            lv_label_set_text_fmt(lbl_kb[i], "%c %.10s L%u %u%%",
-                                  (i == disp) ? '>' : ' ',
-                                  nm, k->data.active_layer, k->data.battery_level);
-            lv_obj_clear_flag(lbl_kb[i], LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(lbl_kb[i], LV_OBJ_FLAG_HIDDEN);
-        }
-    }
-#endif
-
     /* ---- actions ---- */
     static const char *const action_names[ACTION_COUNT] = {
         "Reboot", "Bootloader", "Reset Settings"};
@@ -710,21 +586,6 @@ lv_obj_t *zmk_display_status_screen(void) {
     lv_obj_align(lbl_info, LV_ALIGN_CENTER, 0, 0);
     lv_label_set_text(lbl_info, "INFO");
 
-    /* ---- Page KEYBOARDS ---- */
-    pages[UI_PAGE_KEYBOARDS] = make_page(root);
-    lv_obj_t *k_title = lv_label_create(pages[UI_PAGE_KEYBOARDS]);
-    lv_obj_align(k_title, LV_ALIGN_TOP_MID, 0, 4);
-    lv_label_set_text(k_title, "Keyboards");
-    for (int i = 0; i < ZMK_STATUS_SCANNER_MAX_KEYBOARDS; i++) {
-        lbl_kb[i] = lv_label_create(pages[UI_PAGE_KEYBOARDS]);
-        lv_obj_align(lbl_kb[i], LV_ALIGN_TOP_LEFT, 6, 30 + i * 18);
-        lv_label_set_text(lbl_kb[i], "");
-        lv_obj_add_flag(lbl_kb[i], LV_OBJ_FLAG_HIDDEN);
-    }
-    lbl_channel = lv_label_create(pages[UI_PAGE_KEYBOARDS]);
-    lv_obj_align(lbl_channel, LV_ALIGN_BOTTOM_MID, 0, -4);
-    lv_label_set_text(lbl_channel, "Ch: ALL   (tap)");
-
     /* ---- Page ACTIONS ---- */
     pages[UI_PAGE_ACTIONS] = make_page(root);
     lv_obj_t *a_title = lv_label_create(pages[UI_PAGE_ACTIONS]);
@@ -739,18 +600,13 @@ lv_obj_t *zmk_display_status_screen(void) {
     lv_obj_align(lbl_version, LV_ALIGN_BOTTOM_MID, 0, -4);
     lv_label_set_text(lbl_version, "Touch v" PROSPECTOR_TOUCH_VERSION);
 
-#if IS_ENABLED(CONFIG_PROSPECTOR_MODE_SCANNER)
-    zmk_status_scanner_set_channel(display_settings_get_channel());
-#endif
     layout_style = display_settings_get_layout();
     if (layout_style >= LAYOUT_COUNT) {
         layout_style = 0;
     }
 
     show_page(UI_PAGE_MAIN);
-    if (prospector_mode_get() == PROSPECTOR_MODE_DONGLE) {
-        publish_from_zmk();
-    }
+    publish_from_zmk();
     render_model();
 
     lv_timer_create(ui_tick, 50, NULL);

@@ -11,13 +11,6 @@ zephyr_include_directories(${APPLICATION_SOURCE_DIR}/include)
 zephyr_library()
 
 if(CONFIG_SHIELD_PROSPECTOR_TOUCH)
-    # Mode manager provides prospector_mode_get(); always built.
-    zephyr_library_sources(src/hybrid_state_manager.c)
-
-    if(CONFIG_PROSPECTOR_MODE_SCANNER)
-        zephyr_library_sources(src/ble/status_scanner.c)
-    endif()
-
     if(CONFIG_ZMK_DISPLAY)
         zephyr_library_sources(src/display/lvgl_ui.c)
         zephyr_library_sources(src/power/brightness_control.c)
