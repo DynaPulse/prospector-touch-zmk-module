@@ -57,11 +57,8 @@ endchoice
 config LV_COLOR_16_SWAP
     default y
 
-# --- Touch + pointing + sensors + backlight ---
+# --- Touch + sensors + backlight ---
 config INPUT
-    default y
-
-config ZMK_POINTING
     default y
 
 config I2C
