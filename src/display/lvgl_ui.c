@@ -130,9 +130,9 @@ static enum ui_page active_page = UI_PAGE_MAIN;
 static void publish_from_zmk(void) {
     struct ui_model m = {0};
     m.scanner = false;
-    uint8_t idx = zmk_keymap_highest_layer_active();
+    zmk_keymap_layer_index_t idx = zmk_keymap_highest_layer_active();
     m.layer = idx;
-    const char *name = zmk_keymap_layer_name(idx);
+    const char *name = zmk_keymap_layer_name(zmk_keymap_layer_index_to_id(idx));
     if (name && name[0]) {
         strncpy(m.layer_name, name, sizeof(m.layer_name) - 1);
     } else {
@@ -147,7 +147,7 @@ static void publish_from_zmk(void) {
     m.periph[1] = periph_cache[1];
     m.periph[2] = periph_cache[2];
 
-    struct zmk_endpoint_instance ep = zmk_endpoints_selected();
+    struct zmk_endpoint_instance ep = zmk_endpoint_get_selected();
     m.usb = (ep.transport == ZMK_TRANSPORT_USB);
 #if IS_ENABLED(CONFIG_ZMK_BLE)
     m.profile = zmk_ble_active_profile_index();
