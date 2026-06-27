@@ -1,0 +1,74 @@
+name: Build
+
+# This module ships no buildable image on its own (the prospector_touch shield
+# lives in the zmk-config-prospector-touch repo). To validate that the module
+# compiles, CI builds the downstream config with this checkout substituted in
+# for the published module.
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    name: Build prospector_touch with this module
+    runs-on: ubuntu-latest
+    container:
+      image: zmkfirmware/zmk-build-arm:stable
+    steps:
+      - name: Checkout this module
+        uses: actions/checkout@v4
+        with:
+          path: module
+
+      - name: Checkout downstream config (provides the shield)
+        uses: actions/checkout@v4
+        with:
+          repository: DynaPulse/zmk-config-prospector-touch
+          path: zmk-config
+
+      - name: Cache west workspace
+        uses: actions/cache@v4
+        with:
+          path: |
+            zmk-config/zmk
+            zmk-config/zephyr
+            zmk-config/modules
+            zmk-config/tools
+            zmk-config/bootloader
+          key: ${{ runner.os }}-west-${{ hashFiles('zmk-config/config/west.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-west-
+
+      - name: West init
+        working-directory: zmk-config
+        run: west init -l config
+
+      - name: West update
+        working-directory: zmk-config
+        run: west update
+
+      - name: West Zephyr export
+        working-directory: zmk-config
+        run: west zephyr-export
+
+      - name: Substitute this checkout for the published module
+        working-directory: zmk-config
+        run: |
+          MOD_PATH="$(west list -f '{abspath}' prospector-touch-zmk-module)"
+          echo "Replacing ${MOD_PATH} with the PR checkout"
+          rm -rf "${MOD_PATH}"
+          cp -a "${GITHUB_WORKSPACE}/module" "${MOD_PATH}"
+
+      - name: Build prospector_touch
+        working-directory: zmk-config
+        run: |
+          west build -s zmk/app -b xiao_ble/nrf52840/zmk -p -- \
+            -DSHIELD=prospector_touch \
+            -DZMK_CONFIG="${GITHUB_WORKSPACE}/zmk-config/config" \
+            -DBOARD_ROOT="${GITHUB_WORKSPACE}/zmk-config/config"
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prospector_touch-ci
+          path: zmk-config/build/zephyr/zmk.uf2
+          if-no-files-found: warn
