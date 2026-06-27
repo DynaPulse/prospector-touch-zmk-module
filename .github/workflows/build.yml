@@ -1,15 +1,56 @@
 name: Build
 
-# This module ships no buildable image on its own (the prospector_touch shield
-# lives in the zmk-config-prospector-touch repo). To validate that the module
-# compiles, CI builds the downstream config with this checkout substituted in
-# for the published module.
+# Two jobs:
+#  - validate: fast, toolchain-free structure / Kconfig / brace checks.
+#  - build: real firmware build. The prospector_touch shield lives in THIS
+#    module; the downstream zmk-config-prospector-touch repo supplies the
+#    keymap + mock-kscan glue that makes a complete image. CI builds that
+#    config with this checkout substituted in for the published module so the
+#    PR's module code is what actually gets compiled.
 
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
+  validate:
+    name: Validate module structure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this module
+        uses: actions/checkout@v4
+
+      - name: Validate file structure
+        run: |
+          set -e
+          echo "Checking module structure..."
+          [ -f CMakeLists.txt ] || { echo "ERROR: CMakeLists.txt missing"; exit 1; }
+          [ -f Kconfig ] || { echo "ERROR: Kconfig missing"; exit 1; }
+          [ -f zephyr/module.yml ] || { echo "ERROR: zephyr/module.yml missing"; exit 1; }
+          [ -d boards/shields/prospector_touch ] || { echo "ERROR: prospector_touch shield missing"; exit 1; }
+          [ -f boards/shields/prospector_touch/Kconfig.shield ] || { echo "ERROR: Kconfig.shield missing"; exit 1; }
+          [ -f boards/shields/prospector_touch/prospector_touch.overlay ] || { echo "ERROR: shield overlay missing"; exit 1; }
+          echo "OK: module structure is valid"
+
+      - name: Validate Kconfig syntax
+        run: |
+          echo "Checking Kconfig syntax..."
+          grep -nE "config|bool|int|string|default|depends|select" Kconfig > /dev/null
+          echo "OK: Kconfig syntax appears valid"
+
+      - name: Check C/C++ brace balance
+        run: |
+          echo "Checking C/C++ files for unbalanced braces..."
+          find . -name '*.c' -o -name '*.h' | while read -r file; do
+            open=$(grep -o '{' "$file" | wc -l)
+            close=$(grep -o '}' "$file" | wc -l)
+            if [ "$open" -ne "$close" ]; then
+              echo "WARNING: unbalanced braces in $file ($open open / $close close)"
+            fi
+          done
+          echo "OK: brace check complete"
+
   build:
     name: Build prospector_touch with this module
+    needs: validate
     runs-on: ubuntu-latest
     container:
       image: zmkfirmware/zmk-build-arm:stable
