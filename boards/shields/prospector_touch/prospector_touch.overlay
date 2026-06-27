@@ -41,8 +41,11 @@
     };
     pwm1_default: pwm1_default {
         group1 {
+            /* Backlight polarity is expressed once, in the pwm-leds cell
+             * (PWM_POLARITY_INVERTED). Do NOT also invert here: a second
+             * inversion (nordic,invert) cancels it, giving a non-inverted
+             * net signal and wrong duty mapping. */
             psels = <NRF_PSEL(PWM_OUT0, 1, 11)>;
-            nordic,invert;
         };
     };
     pwm1_sleep: pwm1_sleep {
