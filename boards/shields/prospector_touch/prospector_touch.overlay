@@ -84,6 +84,7 @@
         spi-dev = <&spi3>;
         dc-gpios = <&xiao_d 7 GPIO_ACTIVE_HIGH>;
         reset-gpios = <&xiao_d 3 GPIO_ACTIVE_LOW>;
+        write-only;
         #address-cells = <1>;
         #size-cells = <0>;
 
@@ -91,7 +92,7 @@
             compatible = "sitronix,st7789v";
             reg = <0>;
             mipi-max-frequency = <20000000>;
-            mipi-mode = <MIPI_DBI_MODE_SPI_4WIRE>;
+            mipi-mode = "MIPI_DBI_MODE_SPI_4WIRE";
             width = <280>;
             height = <240>;
             x-offset = <20>;
