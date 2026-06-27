@@ -18,7 +18,6 @@ struct prospector_cfg {
     uint8_t auto_brightness;
     uint8_t manual_brightness;
     uint8_t layout;
-    uint8_t channel;
     uint8_t max_layers;
 };
 
@@ -26,7 +25,6 @@ static struct prospector_cfg cfg = {
     .auto_brightness = IS_ENABLED(CONFIG_PROSPECTOR_USE_AMBIENT_LIGHT_SENSOR),
     .manual_brightness = 60,
     .layout = CONFIG_PROSPECTOR_DEFAULT_LAYOUT,
-    .channel = 0,
     .max_layers = 7,
 };
 
@@ -67,9 +65,6 @@ void display_settings_set_manual_brightness(uint8_t l) { cfg.manual_brightness =
 
 uint8_t display_settings_get_layout(void) { return cfg.layout; }
 void display_settings_set_layout(uint8_t l) { cfg.layout = l; dirty = true; }
-
-uint8_t display_settings_get_channel(void) { return cfg.channel; }
-void display_settings_set_channel(uint8_t c) { cfg.channel = c; dirty = true; }
 
 uint8_t display_settings_get_max_layers(void) { return cfg.max_layers; }
 void display_settings_set_max_layers(uint8_t m) { cfg.max_layers = m; dirty = true; }

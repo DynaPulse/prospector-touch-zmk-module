@@ -25,9 +25,6 @@ void display_settings_set_manual_brightness(uint8_t level);
 uint8_t display_settings_get_layout(void);
 void display_settings_set_layout(uint8_t layout);
 
-uint8_t display_settings_get_channel(void);
-void display_settings_set_channel(uint8_t channel);
-
 uint8_t display_settings_get_max_layers(void);
 void display_settings_set_max_layers(uint8_t max);
 

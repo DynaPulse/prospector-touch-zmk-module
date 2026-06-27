@@ -77,7 +77,6 @@ enum ui_page {
 #define LAYOUT_COUNT 3
 
 struct ui_model {
-    bool scanner;          /* true = scanner mode, false = dongle */
     uint8_t layer;
     char layer_name[16];
     uint8_t wpm;
@@ -89,7 +88,6 @@ struct ui_model {
     bool ble_conn;         /* BLE profile connected */
     bool charging;
     bool caps_word;
-    int8_t rssi;
 };
 
 static struct ui_model model;
@@ -105,7 +103,7 @@ static int periph_conn_count;
 
 static lv_obj_t *pages[UI_PAGE_COUNT];
 /* main page widgets */
-static lv_obj_t *lbl_layer, *lbl_mods, *lbl_profile, *lbl_endpoint, *lbl_rssi, *lbl_caps;
+static lv_obj_t *lbl_layer, *lbl_mods, *lbl_profile, *lbl_endpoint, *lbl_caps;
 static lv_obj_t *lbl_wpm, *lbl_batt, *bar_batt, *bar_pl, *bar_pr;
 /* settings page widgets */
 static lv_obj_t *bar_bright, *lbl_bright, *lbl_auto;
@@ -122,7 +120,6 @@ static enum ui_page active_page = UI_PAGE_MAIN;
 
 static void publish_from_zmk(void) {
     struct ui_model m = {0};
-    m.scanner = false;
     zmk_keymap_layer_index_t idx = zmk_keymap_highest_layer_active();
     m.layer = idx;
     const char *name = zmk_keymap_layer_name(zmk_keymap_layer_index_to_id(idx));
@@ -405,9 +402,6 @@ static void render_model(void) {
             (m.usb || m.ble_conn) ? lv_color_hex(0x39d353) : lv_color_hex(0x8b949e),
             LV_PART_MAIN);
     }
-    if (lbl_rssi) {
-        lv_label_set_text_fmt(lbl_rssi, "%ddBm", m.rssi);
-    }
     if (lbl_caps) {
         lv_label_set_text(lbl_caps, m.caps_word ? "CAPS" : "");
     }
@@ -432,7 +426,6 @@ static void render_model(void) {
         bool show_cbatt = (layout_style != 2);
         set_vis(lbl_profile, extra);
         set_vis(lbl_endpoint, extra);
-        set_vis(lbl_rssi, extra && m.scanner);
         set_vis(lbl_wpm, extra);
         set_vis(lbl_batt, extra);
         set_vis(bar_batt, show_cbatt);
@@ -456,9 +449,8 @@ static void render_model(void) {
 
     /* ---- info ---- */
     if (lbl_info) {
-        lv_label_set_text_fmt(lbl_info, "%s\nWPM %u\nBatt %u%%\nRSSI %ddBm",
-                              m.scanner ? "SCANNER" : "DONGLE",
-                              m.wpm, m.battery, m.rssi);
+        lv_label_set_text_fmt(lbl_info, "DONGLE\nWPM %u\nBatt %u%%",
+                              m.wpm, m.battery);
     }
 
     /* ---- actions ---- */
@@ -510,11 +502,6 @@ lv_obj_t *zmk_display_status_screen(void) {
     lbl_endpoint = lv_label_create(pages[UI_PAGE_MAIN]);
     lv_obj_align(lbl_endpoint, LV_ALIGN_TOP_RIGHT, -6, 4);
     lv_label_set_text(lbl_endpoint, "BLE");
-
-    lbl_rssi = lv_label_create(pages[UI_PAGE_MAIN]);
-    lv_obj_align(lbl_rssi, LV_ALIGN_TOP_MID, 0, 4);
-    lv_label_set_text(lbl_rssi, "");
-    lv_obj_add_flag(lbl_rssi, LV_OBJ_FLAG_HIDDEN);
 
     lbl_caps = lv_label_create(pages[UI_PAGE_MAIN]);
     lv_obj_align(lbl_caps, LV_ALIGN_TOP_MID, 0, 24);
