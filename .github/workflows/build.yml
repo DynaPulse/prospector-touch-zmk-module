@@ -61,7 +61,7 @@ jobs:
       - name: Build prospector_touch
         working-directory: zmk-config
         run: |
-          west build -s zmk/app -b xiao_ble/nrf52840/zmk -p -- \
+          west build -s zmk/app -b xiao_ble//zmk -p -- \
             -DSHIELD=prospector_touch \
             -DZMK_CONFIG="${GITHUB_WORKSPACE}/zmk-config/config" \
             -DBOARD_ROOT="${GITHUB_WORKSPACE}/zmk-config/config"

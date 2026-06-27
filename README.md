@@ -38,7 +38,7 @@ manifest:
     path: config
 ```
 
-Build the `prospector_touch` shield on board `xiao_ble/nrf52840/zmk`.
+Build the `prospector_touch` shield on board `xiao_ble//zmk`.
 
 ## Key configuration
 

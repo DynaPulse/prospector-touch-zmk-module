@@ -1,0 +1,140 @@
+/*
+ * Prospector Touch shield overlay (Seeeduino XIAO BLE / nRF52840).
+ *
+ *  - ST7789V 1.69" 280x240 over SPI3 via Zephyr 4.1 MIPI DBI SPI.
+ *  - CST816S capacitive touch on I2C0 (0x15), absolute -> relative swipe via
+ *    ZMK input processors.
+ *  - APDS9960 ambient light sensor on I2C0 (0x39) for auto-brightness.
+ *  - PWM backlight on P1.11.
+ */
+
+#include <dt-bindings/zmk/matrix_transform.h>
+#include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
+#include <dt-bindings/zmk/input_transform.h>
+#include <input/processors.dtsi>
+
+/ {
+    chosen {
+        zephyr,display = &st7789;
+    };
+
+    pwmleds {
+        compatible = "pwm-leds";
+        disp_bl: disp_bl {
+            pwms = <&pwm1 0 PWM_MSEC(1) PWM_POLARITY_INVERTED>;
+        };
+    };
+
+    /* Touch input pipeline: native ABS X/Y -> swap/invert -> relative deltas. */
+    touch_listener: touch_input_listener {
+        compatible = "zmk,input-listener";
+        device = <&cst816s>;
+        input-processors =
+            <&zip_xy_transform (INPUT_TRANSFORM_XY_SWAP | INPUT_TRANSFORM_Y_INVERT)>,
+            <&zip_absolute_to_relative>;
+    };
+};
+
+&pinctrl {
+    spi3_default: spi3_default {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
+                    <NRF_PSEL(SPIM_MOSI, 1, 15)>,
+                    <NRF_PSEL(SPIM_MISO, 1, 10)>;
+        };
+    };
+    spi3_sleep: spi3_sleep {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK, 1, 13)>,
+                    <NRF_PSEL(SPIM_MOSI, 1, 15)>,
+                    <NRF_PSEL(SPIM_MISO, 1, 10)>;
+            low-power-enable;
+        };
+    };
+    pwm1_default: pwm1_default {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 1, 11)>;
+            nordic,invert;
+        };
+    };
+    pwm1_sleep: pwm1_sleep {
+        group1 {
+            psels = <NRF_PSEL(PWM_OUT0, 1, 11)>;
+            low-power-enable;
+        };
+    };
+};
+
+&spi2 {
+    status = "disabled";
+};
+
+&spi3 {
+    status = "okay";
+    pinctrl-0 = <&spi3_default>;
+    pinctrl-1 = <&spi3_sleep>;
+    pinctrl-names = "default", "sleep";
+    cs-gpios = <&xiao_d 9 GPIO_ACTIVE_LOW>;
+};
+
+/ {
+    mipi_dbi: mipi-dbi {
+        compatible = "zephyr,mipi-dbi-spi";
+        spi-dev = <&spi3>;
+        dc-gpios = <&xiao_d 7 GPIO_ACTIVE_HIGH>;
+        reset-gpios = <&xiao_d 3 GPIO_ACTIVE_LOW>;
+        #address-cells = <1>;
+        #size-cells = <0>;
+
+        st7789: st7789v@0 {
+            compatible = "sitronix,st7789v";
+            reg = <0>;
+            mipi-max-frequency = <20000000>;
+            mipi-mode = <MIPI_DBI_MODE_SPI_4WIRE>;
+            width = <280>;
+            height = <240>;
+            x-offset = <20>;
+            y-offset = <0>;
+            vcom = <0x19>;
+            gctrl = <0x35>;
+            vrhs = <0x12>;
+            vdvs = <0x20>;
+            mdac = <0x60>;
+            gamma = <0x01>;
+            colmod = <0x05>;
+            lcm = <0x2c>;
+            porch-param = [0c 0c 00 33 33];
+            cmd2en-param = [5a 69 02 01];
+            pwctrl1-param = [a4 a1];
+            pvgam-param = [d0 04 0d 11 13 2b 3f 54 4c 18 0d 0b 1f 23];
+            nvgam-param = [d0 04 0c 11 13 2c 3f 44 51 2f 1f 1f 20 23];
+            ram-param = [00 f0];
+            rgb-param = [cd 08 14];
+        };
+    };
+};
+
+&i2c0 {
+    status = "okay";
+    clock-frequency = <I2C_BITRATE_FAST>;
+
+    cst816s: cst816s@15 {
+        compatible = "hynitron,cst816s";
+        reg = <0x15>;
+        irq-gpios = <&xiao_d 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+        rst-gpios = <&xiao_d 1 GPIO_ACTIVE_LOW>;
+    };
+
+    apds9960: apds9960@39 {
+        compatible = "avago,apds9960";
+        reg = <0x39>;
+        int-gpios = <&xiao_d 2 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+    };
+};
+
+&pwm1 {
+    status = "okay";
+    pinctrl-0 = <&pwm1_default>;
+    pinctrl-1 = <&pwm1_sleep>;
+    pinctrl-names = "default", "sleep";
+};

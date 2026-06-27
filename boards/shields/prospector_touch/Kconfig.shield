@@ -1,0 +1,2 @@
+config SHIELD_PROSPECTOR_TOUCH
+    def_bool $(shields_list_contains,prospector_touch)
