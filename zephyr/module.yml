@@ -1,0 +1,8 @@
+name: prospector-touch-zmk-module
+build:
+  cmake: .
+  kconfig: Kconfig
+  settings:
+    board_root: .
+  depends:
+    - lvgl

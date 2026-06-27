@@ -1,0 +1,80 @@
+# Prospector Touch — hybrid touch-enabled dongle/scanner module
+
+config PROSPECTOR_TOUCH
+    bool "Prospector Touch hybrid module"
+    default y if SHIELD_PROSPECTOR_TOUCH
+    select LVGL if ZMK_DISPLAY
+
+if PROSPECTOR_TOUCH
+
+config PROSPECTOR_TOUCH_ENABLED
+    bool "Enable CST816S capacitive touch + swipe gestures"
+    default y
+    select INPUT
+    select INPUT_CST816S
+    select INPUT_CST816S_INTERRUPT
+    select ZMK_POINTING
+    help
+      Uses the upstream Zephyr CST816S input driver (compatible
+      "hynitron,cst816s"). Absolute X/Y are converted to relative gestures via
+      ZMK input processors (zip_xy_transform, zip_absolute_to_relative) and
+      drive page cycling, layer add, and brightness in both USB and BLE states.
+
+config PROSPECTOR_USE_AMBIENT_LIGHT_SENSOR
+    bool "Auto-brightness via APDS9960 ambient light sensor"
+    default y
+    select SENSOR
+    select APDS9960
+
+config PROSPECTOR_FIXED_BRIGHTNESS
+    int "Fixed backlight brightness when ALS disabled (1-100)"
+    range 1 100
+    default 60
+    depends on !PROSPECTOR_USE_AMBIENT_LIGHT_SENSOR
+
+config PROSPECTOR_MODE_SCANNER
+    bool "Battery mode: passive BLE observer (status-advertisement scanner)"
+    default y
+    depends on BT_OBSERVER
+    help
+      On battery power (no USB) the device disables the split central / USB HID
+      path and parses ZMK status advertisements as a passive observer. No
+      pairing, no connection slot consumed. USB power switches back to dongle
+      mode (via cold reboot for a clean BLE stack).
+
+config PROSPECTOR_MAX_KEYBOARDS
+    int "Maximum keyboards tracked in scanner mode"
+    range 1 5
+    default 3
+    depends on PROSPECTOR_MODE_SCANNER
+
+config PROSPECTOR_SCANNER_TIMEOUT_MS
+    int "Drop a tracked keyboard after this many ms without an advert (0=never)"
+    range 0 600000
+    default 480000
+    depends on PROSPECTOR_MODE_SCANNER
+
+config PROSPECTOR_HYBRID_BATTERY_DIM
+    int "Backlight brightness (%) in scanner / battery mode"
+    range 1 100
+    default 25
+
+config PROSPECTOR_HYBRID_SOFT_OFF_IDLE_S
+    int "Idle seconds on battery before soft-off (0 = never)"
+    default 1800
+
+config PROSPECTOR_DISPLAY_IDLE_S
+    int "Seconds of inactivity before the backlight turns off (0 = never)"
+    default 60
+
+config PROSPECTOR_DEFAULT_LAYOUT
+    int "Default main-screen layout style (0=Dashboard, 1=Focus, 2=Minimal)"
+    range 0 2
+    default 0
+
+config ZMK_STATUS_ADV_ACTIVITY_BASED
+    bool "Throttle BLE status advertising when idle (battery save)"
+    default y
+    depends on ZMK_BLE
+
+endif # PROSPECTOR_TOUCH
