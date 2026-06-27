@@ -335,6 +335,7 @@ static void do_reset_settings(void) {
 }
 
 static void select_kb(int dir) {
+#if IS_ENABLED(CONFIG_PROSPECTOR_MODE_SCANNER)
     int actives[ZMK_STATUS_SCANNER_MAX_KEYBOARDS];
     int cnt = 0;
     for (int i = 0; i < ZMK_STATUS_SCANNER_MAX_KEYBOARDS; i++) {
@@ -356,13 +357,18 @@ static void select_kb(int dir) {
     }
     pos = (cur < 0) ? 0 : (pos + (dir > 0 ? 1 : cnt - 1)) % cnt;
     zmk_status_scanner_set_selected(actives[pos]);
+#else
+    ARG_UNUSED(dir);
+#endif
 }
 
 static void cycle_channel(void) {
+#if IS_ENABLED(CONFIG_PROSPECTOR_MODE_SCANNER)
     uint8_t ch = (zmk_status_scanner_get_channel() + 1) % 10; /* 0..9 */
     zmk_status_scanner_set_channel(ch);
     display_settings_set_channel(ch);
     zmk_status_scanner_refresh_display();
+#endif
 }
 
 static void exec_action(void) {
@@ -548,7 +554,8 @@ static void render_model(void) {
                               m.wpm, m.battery, m.rssi);
     }
 
-    /* ---- keyboards ---- */
+    /* ---- keyboards (scanner-only data source) ---- */
+#if IS_ENABLED(CONFIG_PROSPECTOR_MODE_SCANNER)
     if (lbl_channel) {
         uint8_t ch = zmk_status_scanner_get_channel();
         if (ch == 0) {
@@ -576,6 +583,7 @@ static void render_model(void) {
             lv_obj_add_flag(lbl_kb[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
+#endif
 
     /* ---- actions ---- */
     static const char *const action_names[ACTION_COUNT] = {
@@ -731,7 +739,9 @@ lv_obj_t *zmk_display_status_screen(void) {
     lv_obj_align(lbl_version, LV_ALIGN_BOTTOM_MID, 0, -4);
     lv_label_set_text(lbl_version, "Touch v" PROSPECTOR_TOUCH_VERSION);
 
+#if IS_ENABLED(CONFIG_PROSPECTOR_MODE_SCANNER)
     zmk_status_scanner_set_channel(display_settings_get_channel());
+#endif
     layout_style = display_settings_get_layout();
     if (layout_style >= LAYOUT_COUNT) {
         layout_style = 0;
