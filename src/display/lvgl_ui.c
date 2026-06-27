@@ -38,6 +38,9 @@
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
 #include <zmk/events/peripheral_battery_state_changed.h>
 #endif
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+#include <zmk/events/split_peripheral_status_changed.h>
+#endif
 #include "../settings/display_settings.h"
 #include <zephyr/sys/reboot.h>
 #include <zmk/settings.h>
@@ -100,6 +103,9 @@ static atomic_t pending_gesture = ATOMIC_INIT(-1);
 
 /* Peripheral battery cache (dongle mode), updated by the split battery event. */
 static uint8_t periph_cache[3];
+/* Connected split peripheral count; when it reaches zero the cached peripheral
+ * batteries are stale and get cleared so disconnected halves stop showing. */
+static int periph_conn_count;
 
 static lv_obj_t *pages[UI_PAGE_COUNT];
 /* main page widgets */
@@ -200,7 +206,20 @@ static int ui_event_listener(const zmk_event_t *eh) {
     if (pb && pb->source < 3) {
         periph_cache[pb->source] = pb->state_of_charge;
     }
-#else
+#endif
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+    const struct zmk_split_peripheral_status_changed *ps =
+        as_zmk_split_peripheral_status_changed(eh);
+    if (ps) {
+        if (ps->connected) {
+            periph_conn_count++;
+        } else if (periph_conn_count > 0 && --periph_conn_count == 0) {
+            periph_cache[0] = periph_cache[1] = periph_cache[2] = 0;
+        }
+    }
+#endif
+#if !IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING) && \
+    !IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
     ARG_UNUSED(eh);
 #endif
     prospector_activity_ping();
@@ -220,6 +239,9 @@ ZMK_SUBSCRIPTION(prospector_ui, zmk_wpm_state_changed);
 #endif
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
 ZMK_SUBSCRIPTION(prospector_ui, zmk_peripheral_battery_state_changed);
+#endif
+#if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+ZMK_SUBSCRIPTION(prospector_ui, zmk_split_peripheral_status_changed);
 #endif
 
 static void touch_input_cb(struct input_event *evt, void *user) {
