@@ -20,6 +20,9 @@
 
 #include <zmk/event_manager.h>
 #include <zmk/events/layer_state_changed.h>
+/* battery_state_changed.h declares BOTH zmk_battery_state_changed and
+ * zmk_peripheral_battery_state_changed (with the as_* accessors); ZMK has no
+ * separate zmk/events/peripheral_battery_state_changed.h header. */
 #include <zmk/events/battery_state_changed.h>
 #include <zmk/keymap.h>
 #include <zmk/hid.h>
@@ -34,9 +37,6 @@
 #include <zmk/status_advertisement.h>
 #if IS_ENABLED(CONFIG_ZMK_BLE)
 #include <zmk/ble.h>
-#endif
-#if IS_ENABLED(CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING)
-#include <zmk/events/peripheral_battery_state_changed.h>
 #endif
 #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
 #include <zmk/events/split_peripheral_status_changed.h>

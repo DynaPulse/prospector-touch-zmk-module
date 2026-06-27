@@ -1,0 +1,8 @@
+file_format: "1"
+id: prospector_touch
+name: Prospector Touch
+type: shield
+url: https://github.com/DynaPulse/prospector-touch-zmk-module
+requires: [seeed_xiao]
+features:
+  - display
