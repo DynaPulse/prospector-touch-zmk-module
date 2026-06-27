@@ -13,12 +13,11 @@ config PROSPECTOR_TOUCH_ENABLED
     select INPUT
     select INPUT_CST816S
     select INPUT_CST816S_INTERRUPT
-    select ZMK_POINTING
     help
       Uses the upstream Zephyr CST816S input driver (compatible
-      "hynitron,cst816s"). Absolute X/Y are converted to relative gestures via
-      ZMK input processors (zip_xy_transform, zip_absolute_to_relative) and
-      drive page cycling, layer add, and brightness in both USB and BLE states.
+      "hynitron,cst816s"). The display UI reads INPUT_ABS_X/Y + INPUT_BTN_TOUCH
+      directly via an input callback and derives swipe/tap gestures that drive
+      page navigation, layout, channel and brightness in both modes.
 
 config PROSPECTOR_USE_AMBIENT_LIGHT_SENSOR
     bool "Auto-brightness via APDS9960 ambient light sensor"

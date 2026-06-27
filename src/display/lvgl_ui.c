@@ -230,10 +230,12 @@ static void touch_input_cb(struct input_event *evt, void *user) {
 
     switch (evt->type) {
     case INPUT_EV_ABS:
+        /* Panel is mounted 90deg vs the landscape display; swap axes so a
+         * horizontal display swipe maps to the logical X delta. */
         if (evt->code == INPUT_ABS_X) {
-            cx = evt->value;
-        } else if (evt->code == INPUT_ABS_Y) {
             cy = evt->value;
+        } else if (evt->code == INPUT_ABS_Y) {
+            cx = evt->value;
         }
         break;
     case INPUT_EV_KEY:

@@ -8,10 +8,7 @@
  *  - PWM backlight on P1.11.
  */
 
-#include <dt-bindings/zmk/matrix_transform.h>
 #include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
-#include <dt-bindings/zmk/input_transform.h>
-#include <input/processors.dtsi>
 
 / {
     chosen {
@@ -23,15 +20,6 @@
         disp_bl: disp_bl {
             pwms = <&pwm1 0 PWM_MSEC(1) PWM_POLARITY_INVERTED>;
         };
-    };
-
-    /* Touch input pipeline: native ABS X/Y -> swap/invert -> relative deltas. */
-    touch_listener: touch_input_listener {
-        compatible = "zmk,input-listener";
-        device = <&cst816s>;
-        input-processors =
-            <&zip_xy_transform (INPUT_TRANSFORM_XY_SWAP | INPUT_TRANSFORM_Y_INVERT)>,
-            <&zip_absolute_to_relative>;
     };
 };
 
