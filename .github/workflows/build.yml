@@ -38,6 +38,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-west-
 
+      - name: Remove any stale west metadata
+        working-directory: zmk-config
+        run: rm -rf .west
+
       - name: West init
         working-directory: zmk-config
         run: west init -l config

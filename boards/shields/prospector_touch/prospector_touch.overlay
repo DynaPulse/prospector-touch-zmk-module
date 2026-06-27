@@ -51,6 +51,19 @@
             low-power-enable;
         };
     };
+    i2c0_default: i2c0_default {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 0, 4)>,   /* D4 = P0.04 = SDA */
+                    <NRF_PSEL(TWIM_SCL, 0, 5)>;   /* D5 = P0.05 = SCL */
+        };
+    };
+    i2c0_sleep: i2c0_sleep {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 0, 4)>,
+                    <NRF_PSEL(TWIM_SCL, 0, 5)>;
+            low-power-enable;
+        };
+    };
 };
 
 &spi2 {
@@ -104,6 +117,9 @@
 
 &i2c0 {
     status = "okay";
+    pinctrl-0 = <&i2c0_default>;
+    pinctrl-1 = <&i2c0_sleep>;
+    pinctrl-names = "default", "sleep";
     clock-frequency = <I2C_BITRATE_FAST>;
 
     cst816s: cst816s@15 {
