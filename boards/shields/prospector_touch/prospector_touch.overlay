@@ -2,8 +2,8 @@
  * Prospector Touch shield overlay (Seeeduino XIAO BLE / nRF52840).
  *
  *  - ST7789V 1.69" 280x240 over SPI3 via Zephyr 4.1 MIPI DBI SPI.
- *  - CST816S capacitive touch on I2C0 (0x15), absolute -> relative swipe via
- *    ZMK input processors.
+ *  - CST816S capacitive touch on I2C0 (0x15); absolute coordinates are read
+ *    directly by the UI input callback (no ZMK pointing / input processors).
  *  - APDS9960 ambient light sensor on I2C0 (0x39) for auto-brightness.
  *  - PWM backlight on P1.11.
  */
