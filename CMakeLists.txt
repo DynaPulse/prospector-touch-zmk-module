@@ -4,6 +4,10 @@
 # status scanner, the merged LVGL UI, brightness control and NVS settings.
 
 zephyr_include_directories(include)
+# Expose ZMK's public headers (zmk/event_manager.h, zmk/keymap.h, zmk/endpoints.h,
+# zmk/events/*.h, ...) to this module's sources. APPLICATION_SOURCE_DIR is the ZMK
+# app directory (zmk/app), whose include/ holds the public zmk/ headers.
+zephyr_include_directories(${APPLICATION_SOURCE_DIR}/include)
 zephyr_library()
 
 if(CONFIG_SHIELD_PROSPECTOR_TOUCH)
