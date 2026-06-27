@@ -1,0 +1,11 @@
+# West workspace (populated by `west init` / `west update`; never committed)
+.west/
+/zmk/
+/zephyr/
+/modules/
+/tools/
+/bootloader/
+
+# Build output
+build/
+*.uf2
